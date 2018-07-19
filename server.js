@@ -1,44 +1,7 @@
-const express = require("express");
-const bodyParser = require('body-parser')
-const app = express();
-const MongoClient = require('mongodb').MongoClient
+const app = require('./app')
 
+ // Server
+ const port = 3001;
 
-
-
-var db;
-
-function sendUsers(){
-  
-}
-// Set up mongo clinet to allow me to connect to a mongoDB
-MongoClient.connect(
-  "mongodb://ringo:r2d253@ds235461.mlab.com:35461/user_tracker",
-  {
-    useNewUrlParser: true
-  },
-  (err, client) => {
-    app.use(bodyParser.urlencoded({
-      extended: true
-    }))
-    // App Parse JSON in respondses bodies
-    app.use(bodyParser.json())
-
-
-    if (err) return console.log(err);
-    db = client.db("user_tracker"); // whatever your database name is
-
-
-    // Load routes
-    require('./routes')(app);
-
-    // Server
-    const port = 3001;
-
-    app.server = app.listen(port);
-    console.log(`listening on port ${port}`);
-    
-  }
-);
-
-module.exports = app
+ app.server = app.listen(port);
+ console.log(`listening on port ${port}`);

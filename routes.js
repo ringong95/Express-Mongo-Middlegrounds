@@ -1,23 +1,43 @@
-function route(app) {
+function IsJsonString(str) {
+  try {
+    JSON.parse(str);
+  } catch (e) {
+    console.log('not json')
+    return false;
+  }
+    console.log('is json')
+  
+  return JSON.parse(str);
+}
+
+function route(app, db) {
 
   app.get("/", (req, res) => {
-    console.log(__dirname);
-    res.sendFile(__dirname + "/index.html");
-    // Note: __dirname is directory that contains the JavaScript source code. Try logging it and see what you get!
-    // Mine was '/Users/zellwk/Projects/demo-repos/crud-express-mongo' for this app.
+    res.status(200).send('some text');
+    console.log('test')
   });
-
-  // For all get requests to *oururl*.com/export    
+  
+  // These variables allow me to keep valid data that the last input had
   let lastValidName
   let lastValidEmail
   let lastValidPhoneNumber
   let lastValidMarketing
 
   app.post("/export", (req, res) => {
+
     // Get the documents collection      
     const users = db.collection('users');
 
-    const parsedArray = JSON.parse(req.body.data)
+    // check if passed arry is JSON
+    console.log(req.body.data);
+    const parsedArray = IsJsonString(req.body.data)
+  
+    if (!parsedArray) {
+      console.log(!!parsedArray)
+      res.status(418).send({});
+    }
+    
+
     let email = parsedArray[1]
     let phone_number = parsedArray[43]
     let name = parsedArray[24]
@@ -31,9 +51,19 @@ function route(app) {
       name = lastValidName
       accepts_marketing = lastValidMarketing
     }
-
-    // Update document where a is 2, set b equal to 1
     console.log(name);
+
+    res.status(200).send({
+      users: {
+        email,
+        phone_number,
+        name,
+        accepts_marketing
+      }
+    });
+
+
+    
     users.updateOne({
       email
     }, {
