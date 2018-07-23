@@ -1,90 +1,140 @@
-function IsJsonString(str) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    console.log('not json')
-    return false;
-  }
-    console.log('is json')
+var assert = require('assert');
+const stringFunctions = require('./lib/stringFunctions');
+const postExport = require('./lib/postExport');
+
+const addOrderData = (collectedData, orders, users, products, res)=>{
+  const newCollectedData = []
   
-  return JSON.parse(str);
+  const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
+  
+  const asyncForEach = async (array, callback) => {
+    for (let index = 0; index < array.length; index++) {
+      await callback(array[index], index, array)
+    }
+  }
+  const start = async () => {
+    await asyncForEach(collectedData, async (perOrder, index, array) => {
+      orders.find({ user_email: perOrder.user_email }).toArray((err, data) => {
+        if (err) {
+          console.log(err)
+        }
+        if (data) {
+
+          perOrder['product'] = data[0].product
+          newCollectedData.push(perOrder)
+        }
+      })
+      await waitFor(10)
+    })
+    const withUserData = addUserData(newCollectedData, users, products);
+    return withUserData
+
+  }
+  start()
 }
 
-function route(app, db) {
+const addUserData = (collectedData, users, products, res) => {
 
+  // It seems to stop being async here and instantly console log  
+  const newCollectedData = []
+console.log('does it reach?')
+  const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
+
+  const asyncForEach = async (array, callback) => {
+    for (let index = 0; index < array.length; index++) {
+      await callback(array[index], index, array)
+    }
+  }
+  const start = async () => {
+    await asyncForEach(collectedData, async (perUser, index, array) => {
+      users.find({ email: perUser.user_email }).toArray((err, data) => {
+        if (err) {
+          console.log(err)
+        }
+        if (data) {
+          console.log(data[0].name)
+          perUser['name'] = data[0].name
+          perUser['phone_number'] = data[0].phone_number
+          perUser['accepts_marketing'] = data[0].accepts_marketing
+          newCollectedData.push(perUser)
+        }
+      })
+      await waitFor(10)
+    })
+    console.log('cube')    
+    res.status(200).end();
+    res.json({ data: newCollectedData });
+    // addProductData(newCollectedData, products)
+  }
+  start()
+}
+
+// const addProductData = (collectedData, products) => {
+//   const newCollectedData = []
+
+//   const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
+
+//   const asyncForEach = async (array, callback) => {
+//     for (let index = 0; index < array.length; index++) {
+//       await callback(array[index], index, array)
+//     }
+//   }
+//   const start = async () => {
+//     await asyncForEach(collectedData, async (perProduct, index, array) => {
+//       products.find({ user_email: perUser.user_email }).toArray((err, data) => {
+//         if (err) {
+//           console.log(err)
+//         }
+//         if (data) {
+
+//           perProduct['name'] = data[0].name
+//           perProduct['phone_number'] = data[0].phone_number
+//           perProduct['accepts_marketing'] = data[0].accepts_marketing
+
+//           newCollectedData.push(perUser)
+//         }
+//       })
+//       await waitFor(10)
+//     })
+//     return newCollectedData;
+
+//   }
+//   start()
+// }
+
+function route(app, db) {
+  
   app.get("/", (req, res) => {
-    res.status(200).send('some text');
-    console.log('test')
+    res.status(200).end();
   });
   
-  // These variables allow me to keep valid data that the last input had
-  let lastValidName
-  let lastValidEmail
-  let lastValidPhoneNumber
-  let lastValidMarketing
-
-  app.post("/export", (req, res) => {
-
+  
+  app.get('/fetchColdCallData', (req, res) =>{
     // Get the documents collection      
     const users = db.collection('users');
-
-    // check if passed arry is JSON
-    console.log(req.body.data);
-    const parsedArray = IsJsonString(req.body.data)
+    const products = db.collection('products');
+    const orders = db.collection('orders');
+    const contact = db.collection('contact');
+    
+    contact.find( { dateToContact: { $gt: (Date.now()/1000) }  }).toArray( (err, data) => {
+      if(err){
+        console.log(err)
+      }
+      if(data){
+        collectedData = data.map(( eachOrder )=>{
+          delete eachOrder._id
+          return eachOrder
+        })
+        const fullOrderData = addOrderData(collectedData, orders, users, products, res)
+      }
+    });
+    
+  })
   
-    if (!parsedArray) {
-      console.log(!!parsedArray)
-      res.status(418).send({});
-    }
-    
-
-    let email = parsedArray[1]
-    let phone_number = parsedArray[43]
-    let name = parsedArray[24]
-    let accepts_marketing = parsedArray[6]
-    if (!phone_number && !name) {
-      console.log('entered')
-      if (name == 'retail' || 'Shopify retail' || '') return
-      console.log('see once')
-      email = lastValidEmail
-      phone_number = lastValidPhoneNumber
-      name = lastValidName
-      accepts_marketing = lastValidMarketing
-    }
-    console.log(name);
-
-    res.status(200).send({
-      users: {
-        email,
-        phone_number,
-        name,
-        accepts_marketing
-      }
-    });
-
-
-    
-    users.updateOne({
-      email
-    }, {
-      $set: {
-        email,
-        phone_number,
-        name,
-        accepts_marketing
-      }
-    }, {
-      upsert: true,
-      safe: false
-    }, (err, data) => {
-      if (err) {
-        console.log(err);
-      } else {
-        console.log("upload succeded");
-      }
-    });
-
-  });
+  //All of this is in the file './lib/postExport.js'
+  app.post("/export", (req, res) => {
+    postExport.exportToDB(req, res, db)
+  })
 }
 
 module.exports = route;
