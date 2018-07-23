@@ -4,7 +4,6 @@ const postExport = require('./lib/postExport');
 
 const addOrderData = (collectedData, orders, users, products, res)=>{
   const newCollectedData = []
-  
   const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
   
   const asyncForEach = async (array, callback) => {
@@ -26,7 +25,7 @@ const addOrderData = (collectedData, orders, users, products, res)=>{
       })
       await waitFor(10)
     })
-    const withUserData = addUserData(newCollectedData, users, products);
+    const withUserData = addUserData(newCollectedData, users, products, res);
     return withUserData
 
   }
@@ -37,16 +36,16 @@ const addUserData = (collectedData, users, products, res) => {
 
   // It seems to stop being async here and instantly console log  
   const newCollectedData = []
-console.log('does it reach?')
   const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
-
   const asyncForEach = async (array, callback) => {
     for (let index = 0; index < array.length; index++) {
       await callback(array[index], index, array)
     }
   }
+
   const start = async () => {
     await asyncForEach(collectedData, async (perUser, index, array) => {
+      console.log('the rock')
       users.find({ email: perUser.user_email }).toArray((err, data) => {
         if (err) {
           console.log(err)
@@ -61,46 +60,12 @@ console.log('does it reach?')
       })
       await waitFor(10)
     })
-    console.log('cube')    
-    res.status(200).end();
+    console.log('done')
     res.json({ data: newCollectedData });
-    // addProductData(newCollectedData, products)
+    
   }
   start()
 }
-
-// const addProductData = (collectedData, products) => {
-//   const newCollectedData = []
-
-//   const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
-
-//   const asyncForEach = async (array, callback) => {
-//     for (let index = 0; index < array.length; index++) {
-//       await callback(array[index], index, array)
-//     }
-//   }
-//   const start = async () => {
-//     await asyncForEach(collectedData, async (perProduct, index, array) => {
-//       products.find({ user_email: perUser.user_email }).toArray((err, data) => {
-//         if (err) {
-//           console.log(err)
-//         }
-//         if (data) {
-
-//           perProduct['name'] = data[0].name
-//           perProduct['phone_number'] = data[0].phone_number
-//           perProduct['accepts_marketing'] = data[0].accepts_marketing
-
-//           newCollectedData.push(perUser)
-//         }
-//       })
-//       await waitFor(10)
-//     })
-//     return newCollectedData;
-
-//   }
-//   start()
-// }
 
 function route(app, db) {
   
@@ -115,7 +80,7 @@ function route(app, db) {
     const products = db.collection('products');
     const orders = db.collection('orders');
     const contact = db.collection('contact');
-    
+    console.log('here?');
     contact.find( { dateToContact: { $gt: (Date.now()/1000) }  }).toArray( (err, data) => {
       if(err){
         console.log(err)
