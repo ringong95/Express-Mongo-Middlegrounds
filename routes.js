@@ -1,104 +1,187 @@
 var assert = require('assert');
 const stringFunctions = require('./lib/stringFunctions');
-const postExport = require('./lib/postExport');
 
-const addOrderData = (collectedData, orders, users, products, res)=>{
-  const newCollectedData = []
-  const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
+
+const massFind = (contact, orders, users, res)=>{
   
-  const asyncForEach = async (array, callback) => {
-    for (let index = 0; index < array.length; index++) {
-      await callback(array[index], index, array)
-    }
-  }
-  const start = async () => {
-    await asyncForEach(collectedData, async (perOrder, index, array) => {
-      orders.find({ user_email: perOrder.user_email }).toArray((err, data) => {
-        if (err) {
-          console.log(err)
-        }
-        if (data) {
-
-          perOrder['product'] = data[0].product
-          newCollectedData.push(perOrder)
-        }
-      })
-      await waitFor(10)
-    })
-    const withUserData = addUserData(newCollectedData, users, products, res);
-    return withUserData
-
-  }
-  start()
-}
-
-const addUserData = (collectedData, users, products, res) => {
-
-  // It seems to stop being async here and instantly console log  
-  const newCollectedData = []
-  const waitFor = (ms) => new Promise(r => setTimeout(r, ms))
-  const asyncForEach = async (array, callback) => {
-    for (let index = 0; index < array.length; index++) {
-      await callback(array[index], index, array)
-    }
-  }
-
-  const start = async () => {
-    await asyncForEach(collectedData, async (perUser, index, array) => {
-      console.log('the rock')
-      users.find({ email: perUser.user_email }).toArray((err, data) => {
-        if (err) {
-          console.log(err)
-        }
-        if (data) {
-          console.log(data[0].name)
-          perUser['name'] = data[0].name
-          perUser['phone_number'] = data[0].phone_number
-          perUser['accepts_marketing'] = data[0].accepts_marketing
-          newCollectedData.push(perUser)
-        }
-      })
-      await waitFor(10)
-    })
-    console.log('done')
-    res.json({ data: newCollectedData });
+  contact.aggregate([
+    {
+      $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }] }
+    },
+    {
+      $lookup:
+      {
+        from: "orders",
+        localField: "dateOfPurchase",
+        foreignField: "date",
+        as: "order"
+      }
+    },
+    {
+      $unwind: "$order"
+    },{
+      $project: {
+        "order.user_email": 0,
+        "order.date": 0,
+        "order._id": 0
+      }
+    },
+    {
+      $lookup:
+      {
+        from: "users",
+        localField: "user_email",
+        foreignField: "email",
+        as: "user"
+      }
+    },
+    {
+      $unwind: "$user"
+    },
+  ]).toArray(function (err, documents) {
+    console.log(err,documents)
+    res.json({ data: documents });
     
-  }
-  start()
+  })
 }
 
 function route(app, db) {
   
   app.get("/", (req, res) => {
+    console.log('loud and clears')
     res.status(200).end();
   });
   
   
   app.get('/fetchColdCallData', (req, res) =>{
+    console.log('test')
     // Get the documents collection      
     const users = db.collection('users');
     const products = db.collection('products');
     const orders = db.collection('orders');
     const contact = db.collection('contact');
-    console.log('here?');
-    contact.find( { dateToContact: { $gt: (Date.now()/1000) }  }).toArray( (err, data) => {
-      if(err){
-        console.log(err)
-      }
-      if(data){
-        collectedData = data.map(( eachOrder )=>{
-          delete eachOrder._id
-          return eachOrder
-        })
-        const fullOrderData = addOrderData(collectedData, orders, users, products, res)
-      }
-    });
-    
+    massFind(contact, orders, users, res)
   })
-  
+  let lastValidName
+  let lastValidEmail
+  let lastValidPhoneNumber
+  let lastValidMarketing
   //All of this is in the file './lib/postExport.js'
   app.post("/export", (req, res) => {
-    postExport.exportToDB(req, res, db)
+    
+    const fillUserGaps = () => {
+      
+    }
+    const users = db.collection('users');
+    const products = db.collection('products');
+    const orders = db.collection('orders');
+    const contact = db.collection('contact');
+    // check if passed arry is JSON
+    const parsedArray = stringFunctions.isJsonString(req.body.data, res)
+    const email = parsedArray[1]
+    const phone_number = parsedArray[33]
+    const name = parsedArray[24]
+    const accepts_marketing = parsedArray[6]
+
+    let setUpData = {
+      name: lastValidName,
+      email: lastValidEmail,
+      phone_number: lastValidPhoneNumber,
+      accepts_marketing: lastValidMarketing
+    }
+    if (!!phone_number == true || name.match(/(retail)/gi)) {
+       setUpData =  {
+        email: email,
+        phone_number: phone_number,
+        name: name,
+        accepts_marketing: accepts_marketing
+      }
+    }
+    
+    lastValidName = setUpData.name
+    lastValidEmail = setUpData.email
+    lastValidPhoneNumber = setUpData.phone_number
+    lastValidMarketing = setUpData.accepts_marketing
+    res.status(200).end()
+    
+    const unixDate = parseInt((new Date(parsedArray[15]).getTime() / 1000).toFixed(0))
+    if (!!setUpData.email == true) {
+      console.log(setUpData.email)
+      contact.updateOne({
+        user_email: setUpData.email,
+        dateOfPurchase: unixDate,
+      }, {
+        "$set": {
+          user_email: setUpData.email,
+          dateOfPurchase: unixDate,
+          dateToContact: (unixDate + Math.floor(5 * 365 * 24 * 60 * 60)),
+          contactedYet: false,
+          contactedWhen: null
+        }
+      }, {
+        upsert: true,
+        safe: false
+      }, (err, data) => {
+        if (err) {
+          console.log(err);
+        }
+      })
+      
+      users.updateOne({
+        email: setUpData.email
+      }, {
+        $set: setUpData
+      }, {
+        upsert: true,
+        safe: false
+      }, (err, data) => {
+        if (err) {
+          console.log(err);
+        }
+      })
+    }
+    products.updateOne({
+      sku: parsedArray[20]
+    }, {
+      $set: {
+        sku: parsedArray[20],
+        experation: null,
+        active: null,
+        url_to_product: stringFunctions.nameToUrl(parsedArray[17]), // using name of product remove spaces and specail characters and add dashes
+        name: parsedArray[17]
+      }
+    }, {
+      upsert: true,
+      safe: false
+    }, (err, data) => {
+      if (err) {
+        console.log(err);
+      }
+    })
+    
+    orders.updateOne({
+      user_email: setUpData.email,
+      date: unixDate
+    }, {
+      "$set": {
+        user_email: setUpData.email,
+        date: unixDate
+      },
+      $push: {
+        product: {
+          quantity: parsedArray[16],
+          name: parsedArray[17],
+          sku: parsedArray[20],
+        },
+      }
+    }, {
+      upsert: true,
+      safe: false
+    }, (err, data) => {
+      if (err) {
+        console.log(err);
+      }
+    })
   })
 }
 
