@@ -1,5 +1,8 @@
 var assert = require('assert');
+// const uploadToDB = require("./helper");
+
 const stringFunctions = require('./lib/stringFunctions');
+const exportedFunctions = require('./lib/exportFunctions')
 
 
 const massFind = (contact, orders, users, res)=>{
@@ -62,19 +65,18 @@ function route(app, db) {
     const contact = db.collection('contact');
     massFind(contact, orders, users, res)
   })
+
   let lastValidName
   let lastValidEmail
   let lastValidPhoneNumber
   let lastValidMarketing
   //All of this is in the file './lib/postExport.js'
+
   app.post("/export", (req, res) => {
     
-    const fillUserGaps = () => {
-      
-    }
     const users = db.collection('users');
     const products = db.collection('products');
-    const orders = db.collection('orders');
+    const orders = db.collection('kitorders');
     const contact = db.collection('contact');
     // check if passed arry is JSON
     const parsedArray = stringFunctions.isJsonString(req.body.data, res)
@@ -89,34 +91,63 @@ function route(app, db) {
       phone_number: lastValidPhoneNumber,
       accepts_marketing: lastValidMarketing
     }
-    if (!!phone_number == true || name.match(/(retail)/gi)) {
-       setUpData =  {
-        email: email,
-        phone_number: phone_number,
-        name: name,
-        accepts_marketing: accepts_marketing
+
+    if( /(Deluxe Kit)|(Emergency Kit)/g.test(parsedArray[17])){
+      if (!!phone_number == true || name.match(/(retail)/gi)) {
+        setUpData =  {
+          email: email,
+          phone_number: phone_number,
+          name: name,
+          accepts_marketing: accepts_marketing
+        }
       }
-    }
-    
-    lastValidName = setUpData.name
-    lastValidEmail = setUpData.email
-    lastValidPhoneNumber = setUpData.phone_number
-    lastValidMarketing = setUpData.accepts_marketing
-    res.status(200).end()
-    
-    const unixDate = parseInt((new Date(parsedArray[15]).getTime() / 1000).toFixed(0))
-    if (!!setUpData.email == true) {
-      console.log(setUpData.email)
-      contact.updateOne({
-        user_email: setUpData.email,
-        dateOfPurchase: unixDate,
-      }, {
-        "$set": {
-          user_email: setUpData.email,
+      
+      lastValidName = setUpData.name
+      lastValidEmail = setupData.email
+      lastValidPhoneNumber = setUpData.phone_number
+      lastValidMarketing = setUpData.accepts_marketing
+      res.status(200).end()
+      
+      const { email } = setupData.emai
+
+      const unixDate = parseInt((new Date(parsedArray[15]).getTime() / 1000).toFixed(0))
+      console.log()
+      if (!!setUpemail == true) {
+        console.log(setUpemail)
+        contact.updateOne({
+          user_email: setUpemail,
           dateOfPurchase: unixDate,
-          dateToContact: (unixDate + Math.floor(5 * 365 * 24 * 60 * 60)),
-          contactedYet: false,
-          contactedWhen: null
+        }, {
+          "$set": 
+            exportedFunctions.contactSet(setUpemail, unixDate)
+        }, {
+          upsert: true,
+          safe: false
+        }, (err, data) => {
+          if (err) {
+            console.log(err);
+          }
+        })
+        
+        users.updateOne({
+          email: setUpemail
+        }, {
+          $set: setUpData
+        }, {
+          upsert: true,
+          safe: false
+        }, (err, data) => {
+          if (err) {
+            console.log(err);
+          }
+        })
+      }
+      products.updateOne({
+        sku: parsedArray[20]
+      }, {
+        $set: {
+          sku: parsedArray[20],
+          name: parsedArray[17]
         }
       }, {
         upsert: true,
@@ -127,10 +158,21 @@ function route(app, db) {
         }
       })
       
-      users.updateOne({
-        email: setUpData.email
+      orders.updateOne({
+        user_email: setUpemail,
+        date: unixDate
       }, {
-        $set: setUpData
+        "$set": {
+          user_email: setUpemail,
+          date: unixDate
+        },
+        $push: {
+          product: {
+            quantity: parsedArray[16],
+            name: parsedArray[17],
+            sku: parsedArray[20],
+          },
+        }
       }, {
         upsert: true,
         safe: false
@@ -140,49 +182,8 @@ function route(app, db) {
         }
       })
     }
-    products.updateOne({
-      sku: parsedArray[20]
-    }, {
-      $set: {
-        sku: parsedArray[20],
-        experation: null,
-        active: null,
-        url_to_product: stringFunctions.nameToUrl(parsedArray[17]), // using name of product remove spaces and specail characters and add dashes
-        name: parsedArray[17]
-      }
-    }, {
-      upsert: true,
-      safe: false
-    }, (err, data) => {
-      if (err) {
-        console.log(err);
-      }
-    })
-    
-    orders.updateOne({
-      user_email: setUpData.email,
-      date: unixDate
-    }, {
-      "$set": {
-        user_email: setUpData.email,
-        date: unixDate
-      },
-      $push: {
-        product: {
-          quantity: parsedArray[16],
-          name: parsedArray[17],
-          sku: parsedArray[20],
-        },
-      }
-    }, {
-      upsert: true,
-      safe: false
-    }, (err, data) => {
-      if (err) {
-        console.log(err);
-      }
-    })
-  })
-}
+  }) // /export route ends
+  
+}// routes end
 
 module.exports = route;
