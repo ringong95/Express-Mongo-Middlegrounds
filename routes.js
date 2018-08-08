@@ -14,7 +14,7 @@ const massFind = (contact, orders, users, res)=>{
     {
       $lookup:
       {
-        from: "orders",
+        from: "kitorders",
         localField: "dateOfPurchase",
         foreignField: "date",
         as: "order"
@@ -103,15 +103,15 @@ function route(app, db) {
       }
       
       lastValidName = setUpData.name
-      lastValidEmail = setupData.email
+      lastValidEmail = setUpData.email
       lastValidPhoneNumber = setUpData.phone_number
       lastValidMarketing = setUpData.accepts_marketing
       res.status(200).end()
       
-      const { email } = setupData.emai
+      const  setUpemail  = setUpData.email
 
       const unixDate = parseInt((new Date(parsedArray[15]).getTime() / 1000).toFixed(0))
-      console.log()
+      console.log( setUpemail)
       if (!!setUpemail == true) {
         console.log(setUpemail)
         contact.updateOne({
