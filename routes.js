@@ -9,7 +9,7 @@ const massFind = (contact, orders, users, res)=>{
   
   contact.aggregate([
     {
-      $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }, {contactedYet: false} ] }
+      $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }, {contactedYet: { $exists: false  }} ] }
     },
     {
       $lookup:
@@ -84,7 +84,8 @@ function route(app, db) {
     })
     bulk.execute()
     .then((response, err) =>{
-      console.log(response, err)
+      if(response){res.status(200).end()}
+      if(err){res.status(400).end()}
     })
 
     // Todo add a responses on success and failure for the app to know
@@ -127,12 +128,10 @@ function route(app, db) {
       const  setUpemail  = setUpData.email
 
       const unixDate = parseInt((new Date(parsedArray[15]).getTime() / 1000).toFixed(0))
-      console.log( setUpemail)
       if (!!setUpemail == true) {
-        console.log(setUpemail)
+
         contact.updateOne({
           user_email: setUpemail,
-          dateOfPurchase: unixDate,
         }, {
           "$set": 
             exportedFunctions.contactSet(setUpemail, unixDate)
