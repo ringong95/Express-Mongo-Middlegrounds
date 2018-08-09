@@ -9,7 +9,7 @@ const massFind = (contact, orders, users, res)=>{
   
   contact.aggregate([
     {
-      $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }] }
+      $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }, {contactedYet: false} ] }
     },
     {
       $lookup:
@@ -17,9 +17,9 @@ const massFind = (contact, orders, users, res)=>{
         from: "kitorders",
         localField: "dateOfPurchase",
         foreignField: "date",
-        as: "order"
+        as: "order" 
       }
-    },
+    },    
     {
       $unwind: "$order"
     },{
@@ -49,7 +49,12 @@ const massFind = (contact, orders, users, res)=>{
 }
 
 function route(app, db) {
-  
+
+  const users = db.collection('users');
+  const products = db.collection('products');
+  const orders = db.collection('kitorders');
+  const contact = db.collection('contact');
+
   app.get("/", (req, res) => {
     console.log('loud and clears')
     res.status(200).end();
@@ -70,14 +75,25 @@ function route(app, db) {
   let lastValidEmail
   let lastValidPhoneNumber
   let lastValidMarketing
-  //All of this is in the file './lib/postExport.js'
+
+  app.post("/updateContact", (req, res) => {
+    console.log('loud and clear', req.body.data)
+    var bulk = contact.initializeUnorderedBulkOp()
+    JSON.parse(req.body.data).forEach((element)=>{
+      bulk.find( { user_email:element.email } ).update({ $set: { contactedYet: true, contactedWhen:  Date.now()  }})
+    })
+    bulk.execute()
+    .then((response, err) =>{
+      console.log(response, err)
+    })
+
+    // Todo add a responses on success and failure for the app to know
+  })
+
 
   app.post("/export", (req, res) => {
     
-    const users = db.collection('users');
-    const products = db.collection('products');
-    const orders = db.collection('kitorders');
-    const contact = db.collection('contact');
+
     // check if passed arry is JSON
     const parsedArray = stringFunctions.isJsonString(req.body.data, res)
     const email = parsedArray[1]
