@@ -1,6 +1,6 @@
 const stringFunctions = require("./lib/stringFunctions")
 const exportedFunctions = require("./lib/exportFunctions")
-const exportedTwilioFunctions = require("./lib/twilioFunctions")
+const twilioFunctions = require("./lib/twilioFunctions")
 
 const massFind = (contact, orders, users, res)=>{
   
@@ -56,7 +56,7 @@ function route(app, db) {
 	})
   
 	app.get("/text",(req, res)=>{
-		exportedTwilioFunctions.send()
+		twilioFunctions.send()
 	})
   
 	app.get("/fetchColdCallData", (req, res) =>{
