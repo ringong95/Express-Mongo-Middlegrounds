@@ -24,7 +24,7 @@ $ yarn
 
 ## Run
 
-Start the app in the `dev` environment. This starts the renderer process in [**hot-module-replacement**](https://webpack.js.org/guides/hmr-react/) mode and starts a webpack dev server that sends hot updates to the renderer process:
+Start the app in the `dev` environment. This starts process with Nodemon which allows for any changes in your source to automatically restart your server.
 
 ```bash
 $ npm run dev
