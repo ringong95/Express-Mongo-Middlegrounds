@@ -1,8 +1,8 @@
-const app = require('./app')
-require('dotenv').load();
+const app = require("./app")
+require("dotenv").load()
 
- // Server
- const port = 3001;
+// Server
+const port = 3001
 
- app.server = app.listen(port);
- console.log(`listening on port ${port}`);
+app.server = app.listen(port)
+console.log(`listening on port ${port}`)
