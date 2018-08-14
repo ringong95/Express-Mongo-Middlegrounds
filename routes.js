@@ -1,8 +1,11 @@
 var assert = require('assert');
+var schedule = require('node-schedule');
+
 // const uploadToDB = require("./helper");
 
 const stringFunctions = require('./lib/stringFunctions');
 const exportedFunctions = require('./lib/exportFunctions')
+const exportedTwilioFunctions = require('./lib/twilioFunctions')
 
 
 const massFind = (contact, orders, users, res)=>{
@@ -56,13 +59,17 @@ function route(app, db) {
   const contact = db.collection('contact');
 
   app.get("/", (req, res) => {
-    console.log('loud and clears')
+    console.log('loud and clear')
     res.status(200).end();
   });
   
+  app.get("/text",(req, res)=>{
+    console.log('loud and clear2')
+    exportedTwilioFunctions.send()
+
+  })
   
   app.get('/fetchColdCallData', (req, res) =>{
-    console.log('test')
     // Get the documents collection      
     const users = db.collection('users');
     const products = db.collection('products');
