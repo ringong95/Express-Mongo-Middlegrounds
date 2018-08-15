@@ -2,7 +2,7 @@ const stringFunctions = require("./lib/stringFunctions")
 const exportedFunctions = require("./lib/exportFunctions")
 const twilioFunctions = require("./lib/twilioFunctions")
 
-const massFind = (contact, orders, users, res)=>{
+const massFind = (contact, res)=>{
   
 	contact.aggregate([
 		{
@@ -30,7 +30,7 @@ const massFind = (contact, orders, users, res)=>{
 			$lookup:
       {
       	from: "users",
-      	localField: "user_email",
+      	localField: "user_email",	
       	foreignField: "email",
       	as: "user"
       }
@@ -57,14 +57,14 @@ function route(app, db) {
   
 	app.get("/text",(req, res)=>{
 		twilioFunctions.send()
+		res.status(200).end()
+
 	})
   
 	app.get("/fetchColdCallData", (req, res) =>{
 		// Get the documents collection      
-		const users = db.collection("users")
-		const orders = db.collection("orders")
 		const contact = db.collection("contact")
-		massFind(contact, orders, users, res)
+		massFind(contact,  res)
 	})
   
 	let lastValidName
@@ -88,8 +88,6 @@ function route(app, db) {
   
   
 	app.post("/export", (req, res) => {
-    
-    
 		// check if passed arry is JSON
 		const parsedArray = stringFunctions.isJsonString(req.body.data, res)
 		const email = parsedArray[1]
