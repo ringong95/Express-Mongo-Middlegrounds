@@ -1,3 +1,5 @@
+var schedule = require("node-schedule")
+
 const stringFunctions = require("./lib/stringFunctions")
 const exportedFunctions = require("./lib/exportFunctions")
 const twilioFunctions = require("./lib/twilioFunctions")
@@ -53,6 +55,8 @@ function route(app, db) {
   
 	app.get("/", (req, res) => {
 		res.status(200).end()
+
+	
 	})
   
 	app.get("/text",(req, res)=>{
