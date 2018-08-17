@@ -1,4 +1,4 @@
-var schedule = require("node-schedule")
+const schedule = require("node-schedule")
 
 const stringFunctions = require("./lib/stringFunctions")
 const exportedFunctions = require("./lib/exportFunctions")
@@ -7,44 +7,18 @@ const twilioFunctions = require("./lib/twilioFunctions")
 const massFind = (contact, res)=>{
   
 	contact.aggregate([
-		{
-			$match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }, {contactedYet: { $exists: false  }} ] }
-		},
-		{
-			$lookup:
-      {
-      	from: "kitorders",
-      	localField: "dateOfPurchase",
-      	foreignField: "date",
-      	as: "order" 
-      }
-		},    
-		{
-			$unwind: "$order"
-		},{
-			$project: {
-				"order.user_email": 0,
-				"order.date": 0,
-				"order._id": 0
-			}
-		},
-		{
-			$lookup:
-      {
-      	from: "users",
-      	localField: "user_email",	
-      	foreignField: "email",
-      	as: "user"
-      }
-		},
-		{
-			$unwind: "$user"
-		},
+		{ $match: { $and: [{ dateToContact: { $gt: (Date.now() / 1000) } }, {contactedYet: { $exists: false  }} ] } },
+		{ $lookup:{ from: "kitorders", localField: "dateOfPurchase",	foreignField: "date", as: "order"} },    
+		{ $unwind: "$order"},
+		{ $project: { "order.user_email": 0, "order.date": 0, "order._id": 0 } },
+		{ $lookup: { from: "users", localField: "user_email", foreignField: "email", as: "user" } },
+		{ $unwind: "$user" },
 	]).toArray(function (err, documents) {
 		res.json({ data: documents })
-    
 	})
 }
+
+
 
 function route(app, db) {
   
@@ -52,6 +26,11 @@ function route(app, db) {
 	const products = db.collection("products")
 	const orders = db.collection("kitorders")
 	const contact = db.collection("contact")
+
+	const dailyCheck = schedule.scheduleJob("*/1 * * * *", ()=>{
+		console.log('rock')
+		console.log(twilioFunctions.checkCondition(contact))
+	})
   
 	app.get("/", (req, res) => {
 		res.status(200).end()
@@ -60,11 +39,20 @@ function route(app, db) {
 	})
   
 	app.get("/text",(req, res)=>{
-		twilioFunctions.send()
 		res.status(200).end()
 
 	})
   
+	app.post("/sendSms", (req, res)=>{
+		console.log(JSON.parse(req.body.data))
+		JSON.parse(req.body.data).forEach((data) =>{
+			// twilioFunctions.send(data)
+			console.log(data.order.product)
+		})
+		res.status(200).end()
+
+	})
+
 	app.get("/fetchColdCallData", (req, res) =>{
 		// Get the documents collection      
 		const contact = db.collection("contact")
